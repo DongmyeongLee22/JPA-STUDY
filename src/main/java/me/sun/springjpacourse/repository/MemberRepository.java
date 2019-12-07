@@ -23,4 +23,12 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
      */
     @Query(name = "Member.findByUsername")
     List<Member> findByUsername(@Param("username") String username);
+
+    /**
+     * 이 방법도 컴파일시 에러를 잡아준다.
+     * 메서드 이름으로 쿼리 생성은 한 두개의 파라미터일 때 주로 사용하며
+     * 길어지면 이 방법이 좋다.
+     */
+    @Query("select m from Member m where m.username = :username and m.age = :age")
+    List<Member> findUser(@Param("username") String username, @Param("age") int age);
 }
