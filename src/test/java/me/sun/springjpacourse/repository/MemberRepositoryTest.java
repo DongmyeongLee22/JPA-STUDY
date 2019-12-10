@@ -225,7 +225,6 @@ class MemberRepositoryTest {
          */
         Optional<Member> twoAAAMember = memberRepository.findOptionalByUsername("AAA");
 
-
     }
 
 }
