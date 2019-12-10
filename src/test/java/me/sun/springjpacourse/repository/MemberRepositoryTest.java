@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -179,4 +180,52 @@ class MemberRepositoryTest {
         assertThat(memberList.get(1).getUsername()).isEqualTo("BBB");
 
     }
+
+    @Test
+    public void returnType() throws Exception {
+        Member member1 = new Member("AAA", 10);
+        Member member2 = new Member("BBB", 20);
+        memberRepository.save(member1);
+        memberRepository.save(member2);
+
+        List<Member> list = memberRepository.findListByUsername("AAA");
+        assertThat(list.get(0).getUsername()).isEqualTo("AAA");
+
+        Member memberB = memberRepository.findMemberByUsername("BBB");
+        assertThat(memberB.getUsername()).isEqualTo("BBB");
+
+        Optional<Member> optionalB = memberRepository.findOptionalByUsername("BBB");
+        Member getMember = optionalB.get();
+        assertThat(getMember.getUsername()).isEqualTo("BBB");
+
+
+        // List는 없으면 empty가 반환되지 null이 아니다!!!
+        List<Member> emptyCollection = memberRepository.findListByUsername("AQWEADAA");
+        System.out.println("===============" + emptyCollection.toString());
+        assertThat(emptyCollection).isNotNull();
+        assertThat(emptyCollection).isEmpty();
+        assertThat(emptyCollection.size()).isEqualTo(0);
+
+
+        // 단건일 경우 NULL이다.
+        Member nullMember = memberRepository.findMemberByUsername("QWDQDQ");
+        assertThat(nullMember).isNull();
+
+        // Optional은 원래 Optional처럼 된다.
+        Optional<Member> optionalMem = memberRepository.findOptionalByUsername("QWDWDQD");
+        assertThat(optionalMem).isEmpty();
+
+        Member member3 = new Member("AAA", 10);
+        memberRepository.save(member3);
+
+        /*
+         NonUniqueResultException == > IncorrectResultSizeDataAccessException(스프링 프레임 워크 예외)
+         예외를 스프링 예외로 반환해준다. 왜냐하면 리포지토리 기술은 JPA가 될수도 있지만 MongoDB가 될수도 있고 등등
+         다른 기술들이 될 수 있기 때문에 동일한 예외를 던저주기 위해서 그런거다.
+         */
+        Optional<Member> twoAAAMember = memberRepository.findOptionalByUsername("AAA");
+
+
+    }
+
 }
