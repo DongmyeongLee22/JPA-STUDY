@@ -476,4 +476,52 @@ class MemberRepositoryTest {
         }
     }
 
+    @Test
+    public void queryHint() throws Exception {
+        //given
+        Member member1 = new Member("member1", 10);
+        memberRepository.save(member1);
+        em.flush(); // 값을 없애는게 아닌 DB에 동기화
+        em.clear(); // 값을 다 없앤다. 클리어시 영속성 컨텍스트가 다 날라간다.
+
+        //when
+        Member findMember = memberRepository.findById(member1.getId()).get();
+
+        findMember.setUsername("member2");
+        em.flush();
+        /*
+        변경 감지로 인해 알아서 업데이트 쿼리가 날라간다. 플러시를 해야 그 값이 날라감.
+        큰 단점이 있는데 변경 감지를 위해서는 원본이 존재(원본을 만듬)해야한다. 그러므로 객체를 두개 관리하게 된다.
+
+        find할때 이 값을 변경하지 않고 조회용으로만 쓰고 싶어도 이미 가져올때 원본(스냅샷)을 만들어 둔다.
+        그러므로 Hint같이 다른 방법을 사용해야 한다.
+
+        실무에서 진짜 복잡한거의 성능 문제는 대부분 쿼리를 잘못 날린거지 스냅샷은 그렇게 크게 문제가 안된다.
+        그러므로 하나하나 이렇게 최적화는 상황에 맞게 쓰는게 좋다.
+         */
+
+        System.out.println("==============================================================");
+
+        //힌트 사용 : readOnly = true 이므로 가져올때 스냅샷을 만들지 않는다. 변경을해도 적용안됨.
+        Member findMember2 = memberRepository.findReadOnlyByUsername("member2");
+        findMember2.setUsername("member1");
+        em.flush();
+
+    }
+
+    @Test
+    public void lockTest() throws Exception {
+        //given
+        Member member1 = new Member("member1", 10);
+        memberRepository.save(member1);
+        em.flush(); // 값을 없애는게 아닌 DB에 동기화
+        em.clear(); // 값을 다 없앤다. 클리어시 영속성 컨텍스트가 다 날라간다.
+
+        //when
+        Member findMember = memberRepository.findLockByUsername("member1");
+
+        //쿼리를 보면 자동으로 for update가 붙는것을 알 수있다.
+    }
+
+
 }
