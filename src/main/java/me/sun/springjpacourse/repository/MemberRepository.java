@@ -5,6 +5,7 @@ import me.sun.springjpacourse.entity.Member;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -79,4 +80,28 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
     @Query("update Member m set m.age = m.age + 1 where m.age >= :age")
     int bulkAgePlus(@Param("age") int age);
 
+
+    /* ========================== EntityGraph 사용하기 ========================== */
+
+    //페치조인
+    @Query("select m from Member m left join fetch m.team")
+    List<Member> findMemberFetchJoin();
+
+    /* EntityGraph : 페치 조인을 편리하게 사용하기
+    사실 JPA 표준 스펙 2.2부터 JPA가 제공한다. 그 EntityGraph를 활용해서 사용할 수 있게 해준 것이다.
+    JPA의 NamedEntity
+     */
+    @Override
+    @EntityGraph(attributePaths = {"team"})
+    List<Member> findAll();
+
+    //조회는 JPQL로하고 엔티티 그래프 쓰는것도 가능하다.
+    @EntityGraph(attributePaths = {"team"})
+    @Query("select m from Member m")
+    List<Member> findMemberEntityGraph();
+
+    // 이렇게 회원 조회때 팀도 뽑는 등 유연하게 사용이 가능하다.
+//    @EntityGraph("Member.all") //NamedEntityGraph 사용, 잘 사용 안함..
+    @EntityGraph(attributePaths = {"team"})
+    List<Member> findEntityGraphByUsername(@Param("username") String username);
 }

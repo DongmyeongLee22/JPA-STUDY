@@ -384,6 +384,96 @@ class MemberRepositoryTest {
         assertThat(resultCount).isEqualTo(3);
         assertThat(findMember3.getAge()).isEqualTo(21);
         assertThat(findMember4.getAge()).isEqualTo(31);
-
     }
+
+    /* @EntityGraph
+     * 페치조인을 간단하게 사용할 수 있음
+     * 페치 조인 복습
+     */
+    @Test
+    public void findMemberLazy() throws Exception {
+        //given
+
+        // member1 ==> team1
+        // member2 ==> team2
+
+        Team teamA = new Team("teamA");
+        Team teamB = new Team("teamB");
+        teamRepository.save(teamA);
+        teamRepository.save(teamB);
+
+        Member member1 = new Member("member1", 10, teamA);
+        Member member2 = new Member("member2", 10, teamB);
+
+        memberRepository.save(member1);
+        memberRepository.save(member2);
+
+        em.flush();
+        em.clear();
+
+        //when
+
+        /*
+        이때는 멤버만 받아온다. 아무리 지연로딩이라도 Team을 null로 나둘순 없다!!
+        그렇기 때문에 지연로딩일 경우 Team에 Proxy객체를 넣어서 이 Proxy를 호출할 때 실제 쿼리를 보내게 된다.
+         */
+        List<Member> members = memberRepository.findAll();
+
+        //then
+        for (Member member : members) {
+            System.out.println("member = " + member);
+
+            //이때 보면 프록시인것을 알 수 있다.
+            System.out.println("member.getTeam().getClass() = " + member.getTeam().getClass());
+
+            //지연 로딩이므로 쿼리가 두번 더 나간다. 1 + N 문제 발생!
+            System.out.println("member.getTeam().getName() = " + member.getTeam().getName());
+        }
+    }
+
+    @Test
+    public void findMemberUsingFetchJoin() throws Exception {
+        //given
+
+        // member1 ==> team1
+        // member2 ==> team2
+
+        Team teamA = new Team("teamA");
+        Team teamB = new Team("teamB");
+        teamRepository.save(teamA);
+        teamRepository.save(teamB);
+
+        Member member1 = new Member("member1", 10, teamA);
+        Member member2 = new Member("member2", 10, teamB);
+
+        memberRepository.save(member1);
+        memberRepository.save(member2);
+
+        em.flush();
+        em.clear();
+
+        //when
+
+        /*
+        페치를 이용하므로 여기서 한번에 Team까지 조회한다.
+        DB조인은 조인만 하지만 페치조인은 조인하고 select 절에 데이터를 다 넣어준다.
+         */
+//        List<Member> members = memberRepository.findMemberFetchJoin();
+
+        /*
+        EnityGraph 사용한 것.
+        내부적으로 보면 다 페치조인 쓰는것.
+         */
+        List<Member> members = memberRepository.findAll();
+
+        //then
+        for (Member member : members) {
+            System.out.println("member = " + member);
+
+            // Team을 보면 프록시가 아닌 순수한 객체이다.
+            System.out.println("member.getTeam().getClass() = " + member.getTeam().getClass());
+            System.out.println("member.getTeam().getName() = " + member.getTeam().getName());
+        }
+    }
+
 }
