@@ -6,6 +6,10 @@ import me.sun.springjpacourse.entity.Team;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -226,5 +230,117 @@ class MemberRepositoryTest {
         Optional<Member> twoAAAMember = memberRepository.findOptionalByUsername("AAA");
 
     }
+
+    @Test
+    public void paging() throws Exception {
+        //given
+        memberRepository.save(new Member("member1", 10));
+        memberRepository.save(new Member("member2", 10));
+        memberRepository.save(new Member("member3", 10));
+        memberRepository.save(new Member("member4", 10));
+        memberRepository.save(new Member("member5", 10));
+
+
+        int age = 10;
+
+        // 스프링 데이터 JPA는 페이지를 1이 아닌 0부터 시작한다.
+        // 정렬은 넣어도되고 안 해도되고
+        PageRequest pageRequest = PageRequest.of(0, 3, Sort.by(Sort.Direction.DESC, "username"));
+
+        //when
+        Page<Member> pagedMember = memberRepository.findByAge(age, pageRequest);
+
+        // 반환 타입을 Page로 받으면 total Count Query까지 같이 날리기 때문에 total Count를 따로 구할 필요가 없다.
+        // 카운트 쿼리 날라가는거 확인
+
+        //then
+        List<Member> content = pagedMember.getContent();
+        long totalElements = pagedMember.getTotalElements();
+
+        assertThat(content.size()).isEqualTo(3);
+        assertThat(totalElements).isEqualTo(5);
+        // page 번호까지 받을 수 있다!!
+        assertThat(pagedMember.getNumber()).isEqualTo(0);
+        assertThat(pagedMember.getTotalPages()).isEqualTo(2);
+        assertThat(pagedMember.isFirst()).isTrue();
+        assertThat(pagedMember.hasNext()).isTrue();
+
+    }
+
+    @Test
+    public void slicing() throws Exception {
+        //given
+        memberRepository.save(new Member("member1", 10));
+        memberRepository.save(new Member("member2", 10));
+        memberRepository.save(new Member("member3", 10));
+        memberRepository.save(new Member("member4", 10));
+        memberRepository.save(new Member("member5", 10));
+
+
+        int age = 10;
+
+        PageRequest pageRequest = PageRequest.of(0, 3, Sort.by(Sort.Direction.DESC, "username"));
+
+        //when
+
+        //findByAge는 Repository를 보면 Page이다. Page가 Slice를 상속받아 에러가 안나지만 주의해야 한다.
+//        Slice<Member> pagedMember = memberRepository.findByAge(age, pageRequest);
+
+        // Slice는 카운트 쿼리를 안날린다.
+        // limit 숫자를 보면 3이아닌 4개이다. 이것은 요즘 인터넷에서 많이 사용되는 더보기 방식을 위해 있는것이다.
+        // 11개를 받아온 후 유저에게 10개만 보여주고 1개만 숨긴 후 더보기 버튼을 만든다. 유저가 더보기 버튼을 누르면
+        // 그때 받아오는 방식??
+        Slice<Member> pagedMember = memberRepository.findSliceByAge(age, pageRequest);
+
+
+        //then
+        List<Member> content = pagedMember.getContent();
+
+        assertThat(content.size()).isEqualTo(3);
+        assertThat(pagedMember.getNumber()).isEqualTo(0);
+        assertThat(pagedMember.isFirst()).isTrue();
+        assertThat(pagedMember.hasNext()).isTrue();
+
+    }
+
+    @Test
+    public void getListUsingPage() throws Exception {
+        //given
+        memberRepository.save(new Member("member1", 10));
+        memberRepository.save(new Member("member2", 10));
+        memberRepository.save(new Member("member3", 10));
+        memberRepository.save(new Member("member4", 10));
+        memberRepository.save(new Member("member5", 10));
+
+
+        int age = 10;
+
+        PageRequest pageRequest = PageRequest.of(0, 3, Sort.by(Sort.Direction.DESC, "username"));
+
+        // when
+        // 이렇게 페이징하지 않고 그냥 처음 갯수만 받을 수도 있다.
+        List<Member> pagedMember = memberRepository.findListByAge(age, pageRequest);
+
+        //then
+        assertThat(pagedMember.size()).isEqualTo(3);
+    }
+
+    @Test
+    public void Top3Test() throws Exception {
+        //given
+        memberRepository.save(new Member("member1", 10));
+        memberRepository.save(new Member("member2", 10));
+        memberRepository.save(new Member("member3", 10));
+        memberRepository.save(new Member("member4", 10));
+        memberRepository.save(new Member("member5", 10));
+
+        //when
+        List<Member> top3By = memberRepository.findTop3By();
+
+        //then
+        assertThat(top3By.size()).isEqualTo(3);
+    }
+
+
 
 }

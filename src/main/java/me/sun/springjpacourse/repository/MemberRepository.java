@@ -2,6 +2,9 @@ package me.sun.springjpacourse.repository;
 
 import me.sun.springjpacourse.dto.MemberDto;
 import me.sun.springjpacourse.entity.Member;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -48,4 +51,21 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
     Member findMemberByUsername(String username);
 
     Optional<Member> findOptionalByUsername(String username);
+
+    Page<Member> findByAge(int age, Pageable pageable);
+
+    Slice<Member> findSliceByAge(int age, Pageable pageable);
+
+    List<Member> findListByAge(int age, Pageable pageable);
+
+
+    /*
+    실무에서 카운트 쿼리가 복잡해지면 성능 이슈가 생길수 있다.
+    다른 테이블과 left join을 할 때는 굳이 다른 테이블을 같이 조회할 필요가 없이 기존 테이블만 조회하면 된다.
+    그런데 Spring Data Jpa의 Page 기능을 사용하면 카운터 쿼리를 날리게 된다.
+    그러므로 아래와 같이 countQuery를 분리하여 가져오면 성능을 원할하게 사용할 수 있다.
+     */
+    @Query(value = "select m from Member m left join m.team t",
+            countQuery = "select count(m.username) from Member m")
+    Page<Member> findQueryByAge(int age, Pageable pageable);
 }
