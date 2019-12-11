@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.persistence.EntityManager;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,6 +19,9 @@ class MemberJpaRepositoryTest {
 
     @Autowired
     MemberJpaRepository memberJpaRepository;
+
+    @Autowired
+    EntityManager em;
 
     @Test
     public void testMember() throws Exception{
@@ -118,6 +122,34 @@ class MemberJpaRepositoryTest {
 
         // totalCount 이므로 totalCount = 5 가 맞다
         assertThat(totalCount).isEqualTo(5);
+
+    }
+
+    @Test
+    public void bulkUpdate() throws Exception {
+
+        //given
+        Member member3 = new Member("member3", 20);
+        Member member4 = new Member("member4", 30);
+
+        memberJpaRepository.save(new Member("member1", 10));
+        memberJpaRepository.save(new Member("member2", 19));
+        memberJpaRepository.save(member3);
+        memberJpaRepository.save(member4);
+        memberJpaRepository.save(new Member("member5", 40));
+
+        //when
+        em.flush();
+        em.clear();
+        int resultCount = memberJpaRepository.bulkAgePlus(20);
+
+        //then
+        Member findMember4 = memberJpaRepository.find(member4.getId());
+        Member findMember3 = memberJpaRepository.find(member3.getId());
+
+        assertThat(resultCount).isEqualTo(3);
+        assertThat(findMember3.getAge()).isEqualTo(21);
+        assertThat(findMember4.getAge()).isEqualTo(31);
 
     }
 

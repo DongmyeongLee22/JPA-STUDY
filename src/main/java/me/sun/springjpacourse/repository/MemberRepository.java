@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -68,4 +69,14 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
     @Query(value = "select m from Member m left join m.team t",
             countQuery = "select count(m.username) from Member m")
     Page<Member> findQueryByAge(int age, Pageable pageable);
+
+    /* 벌크성 수정 쿼리 사용
+    더티 체킹으로 한건씩 업데이트 하는게 아닌 예를들어 모든 직원의 연봉을 10% 인상한다 할때 벌크성 수정쿼리라고 한다.
+     */
+    // 이 Annotation이 있어야 기존 jpa의 .executeUpdate를 실행한다. 그렇지 않으면 에러 발생한다.
+    // clear = true로 한다면 따로 em.flush, clear를 안날려도 된다.
+    @Modifying(clearAutomatically = true)
+    @Query("update Member m set m.age = m.age + 1 where m.age >= :age")
+    int bulkAgePlus(@Param("age") int age);
+
 }

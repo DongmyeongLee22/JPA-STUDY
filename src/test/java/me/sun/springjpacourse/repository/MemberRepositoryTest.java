@@ -13,6 +13,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -23,10 +25,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Transactional
 @Rollback(false)
 class MemberRepositoryTest {
+
     @Autowired
     MemberRepository memberRepository;
+
     @Autowired
     TeamRepository teamRepository;
+
+    @PersistenceContext
+    EntityManager em;
 
     @Test
     public void testMember() throws Exception {
@@ -342,5 +349,41 @@ class MemberRepositoryTest {
     }
 
 
+    @Test
+    public void bulkUpdate() throws Exception {
 
+        //given
+        Member member3 = new Member("member3", 20);
+        Member member4 = new Member("member4", 30);
+
+        memberRepository.save(new Member("member1", 10));
+        memberRepository.save(new Member("member2", 19));
+        memberRepository.save(member3);
+        memberRepository.save(member4);
+        memberRepository.save(new Member("member5", 40));
+
+        //when
+
+        /*
+        JPA는 영속성 컨텍스트에서 엔티티가 관리가 되는데 벌크연산은 그것을 다 무시하고 DB에 때리기 때문에
+        이렇게 bulk를 날리면 영속성 컨텍스트의 내용이 반영이 안됨. 그렇기 때문에 em.flush와 clear 해줘야한다.
+         */
+//        em.flush(); em.clear();// 이거 해주기 싫으면 @Modifying에 설정
+        int resultCount = memberRepository.bulkAgePlus(20);
+        // 가장 깔끔한건 영속성 컨텍스트에 없고 벌크 날리는 것.
+
+        /*
+        JPA와 JDBC or 마이바티스등 이랑 같이 쓸때 이것을 조심해야 한다.
+        벌크 연산을 쏜거랑 마이바티스에서 직접 날리는것은 JPA가 인식을 못하므로 영속성 컨텍스트 값이 맞지 않을 수 있다.
+        그러므로 flush, clear를 해줘야 한다.
+         */
+        //then
+        Member findMember4 = memberRepository.findById(member4.getId()).get();
+        Member findMember3 = memberRepository.findById(member3.getId()).get();
+
+        assertThat(resultCount).isEqualTo(3);
+        assertThat(findMember3.getAge()).isEqualTo(21);
+        assertThat(findMember4.getAge()).isEqualTo(31);
+
+    }
 }
