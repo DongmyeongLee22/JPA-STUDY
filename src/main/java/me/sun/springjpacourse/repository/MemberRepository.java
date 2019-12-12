@@ -130,6 +130,16 @@ public interface MemberRepository extends JpaRepository<Member, Long>, MemberRep
     복잡도를 낮추기 위해서는 핵심 비즈니스로직의 Repo와 화면을 맞춘 Dto 뽑고 뭐 복잡한것들의 Repo와 분리한다.
      */
 
+    /* ========================== Auditing ========================== */
+    /*
+    엔티티를 생성, 변경할 때 변경한 사람과 시간을 추적하고 싶을 때 유용하게 사용한다.
+    실무에선 등록일, 수정일은 모든 테이블에 적용하고 등록자, 수정자는 상황에 맞게 적용한다.
+    즉 등록일, 수정일은 모든 테이블에 등록해야 한다!!
+
+    테이블에서는 하나하나 다 넣어야 하나 객체지향적인 JPA를 상속을 잘 활용하면 간단하게 구현가능하다.
+    1. 순수한 JPA 사용 후 -> JpaBaseEntity.class
+    2. 스프링 JPA 사용해보자. -> @EnableJpaAuditing 필요
+     */
 
 
 }

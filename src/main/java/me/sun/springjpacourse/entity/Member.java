@@ -14,7 +14,9 @@ import javax.persistence.*;
         query = "select m from Member m where m.username = :username"
 )
 @NamedEntityGraph(name = "Member.all", attributeNodes = @NamedAttributeNode("team"))
-public class Member {
+public class Member extends BaseEntity {
+    //extends JpaBaseEntity{
+    // 실행 후 쿼리를 보면 실제 수정일 생성일이 적용된것을 확인 가능
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
