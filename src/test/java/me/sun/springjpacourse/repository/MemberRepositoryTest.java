@@ -519,9 +519,19 @@ class MemberRepositoryTest {
 
         //when
         Member findMember = memberRepository.findLockByUsername("member1");
-
         //쿼리를 보면 자동으로 for update가 붙는것을 알 수있다.
     }
 
+    @Test
+    public void callCustom() throws Exception {
+        /*
+        Custom이 정상적으로 실행이 된다. 보통 이제 QueryDSL을 쓸때 이렇게 많이 쓴다.
 
+         */
+        List<Member> memberCustom = memberRepository.findMemberCustom();
+        assertThat(memberCustom.size()).isEqualTo(0);
+    }
 }
+
+
+

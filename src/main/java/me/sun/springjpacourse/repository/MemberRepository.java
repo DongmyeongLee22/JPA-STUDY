@@ -13,7 +13,7 @@ import javax.persistence.QueryHint;
 import java.util.List;
 import java.util.Optional;
 
-public interface MemberRepository extends JpaRepository<Member,Long> {
+public interface MemberRepository extends JpaRepository<Member, Long>, MemberRepositoryCustom {
 
     List<Member> findByUsernameAndAgeGreaterThan(String username, int age);
 
@@ -120,4 +120,16 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     // 올라가보면 JPA꺼임
     Member findLockByUsername(String username);
+
+    /* ========================== 사용자 정의 레포지토리 구현 ========================== */
+
+    /*
+    실무에서 많이 사용하는 방법이다. 스프링 Jpa는 인터페이스로 구현되어있기 때문에 직접 구현하려면
+    그 안에 내용을 다 구현해야 하기때문에 다른 방법이 필요하다.
+
+    복잡도를 낮추기 위해서는 핵심 비즈니스로직의 Repo와 화면을 맞춘 Dto 뽑고 뭐 복잡한것들의 Repo와 분리한다.
+     */
+
+
+
 }
