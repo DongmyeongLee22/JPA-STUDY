@@ -142,4 +142,16 @@ public interface MemberRepository extends JpaRepository<Member, Long>, MemberRep
      */
 
 
+    /* ========================== 새로운 엔티티 구별하는 방법 ========================== */
+    
+    /*
+        merge는 영속상태 엔티티가 어떤 이유로 영속상태를 벗어났을 때
+        다시 영속상태가 되어야 할 떄 사용하지 update때 사용하면 안된다.!!
+        변경감지 사용하기
+
+        --> Item, ItemRepository 확인
+     */
+    
+
+    
 }

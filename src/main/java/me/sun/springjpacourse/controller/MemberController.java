@@ -11,8 +11,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.annotation.PostConstruct;
-
 @RestController
 @RequiredArgsConstructor
 public class MemberController {
@@ -93,7 +91,7 @@ public class MemberController {
         ---> 권장사항은 그냥 페이지 인덱스를 0부터 사용하거나 커스텀하자.
      */
 
-    @PostConstruct
+    //@PostConstruct
     public void init() {
         //memberRepository.save(new Member("member1")); web 확장 - 도메인 클래스 컨버터 용
 

@@ -68,10 +68,10 @@ class MemberTest {
 
         //then
         System.out.println("============================================");
-        System.out.println("findMember.getCreatedDate() = " + findMember.getCreatedDate());
-        System.out.println("findMember.getLastModifiedDate() = " + findMember.getLastModifiedDate());
-        System.out.println("findMember.getCreatedBy() = " + findMember.getCreatedBy());
-        System.out.println("findMember.getLastModifiedBy() = " + findMember.getLastModifiedBy());
+//        System.out.println("findMember.getCreatedDate() = " + findMember.getCreatedDate());
+//        System.out.println("findMember.getLastModifiedDate() = " + findMember.getLastModifiedDate());
+//        System.out.println("findMember.getCreatedBy() = " + findMember.getCreatedBy());
+//        System.out.println("findMember.getLastModifiedBy() = " + findMember.getLastModifiedBy());
 //        System.out.println("findMember.getUpdatedDate() = " + findMember.getUpdatedDate()); 순수 JPA 사용
         System.out.println("============================================");
     }
