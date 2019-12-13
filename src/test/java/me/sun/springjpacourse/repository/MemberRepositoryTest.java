@@ -6,10 +6,7 @@ import me.sun.springjpacourse.entity.Team;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Slice;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -531,6 +528,131 @@ class MemberRepositoryTest {
         List<Member> memberCustom = memberRepository.findMemberCustom();
         assertThat(memberCustom.size()).isEqualTo(0);
     }
+
+
+    /* ========================== QueryByExample ========================== */
+    @Test
+    public void queryByExample() throws Exception {
+        //given
+        Team teamA = new Team("teamA");
+        em.persist(teamA);
+
+        Member m1 = new Member("m1", 0, teamA);
+        Member m2 = new Member("m2", 0, teamA);
+        em.persist(m1);
+        em.persist(m2);
+
+        em.flush();
+        em.clear();
+
+        //when
+        /*
+            이 멤버는 사용하는게 아닌 검색용
+            Example.of로 Example을 만들 수 있다.
+
+            ** 문제 **
+            Domain 객체를 가지고 검색조건을 만든다.
+            조인이 되긴해도 inner 조인만 가능하고 left 조인은 불가하다.
+            inner조인만 사용하더라도, 나중에 left조인이 들어간다면 일이 커진다.
+         */
+        //Probe 생성
+        Member member = new Member("m1");
+
+        // 이렇게 member에 teamd을 넣어주면 inner 조인으로 검색조건에 포함시켜준다.
+        Team team = new Team("teamA");
+        member.setTeam(team);
+
+        /*
+            null은 검색조건에 무시되지만 프리미티브 타입은 포함시키므로
+            이렇게 matcher를 통해 case를 뺴줘야 한다.
+         */
+        ExampleMatcher matcher = ExampleMatcher.matching()
+                .withIgnoreCase("age");
+
+        Example<Member> example = Example.of(member, matcher);
+
+        List<Member> result = memberRepository.findAll(example);
+
+        //then
+        assertThat(result.get(0).getUsername()).isEqualTo("m1");
+        assertThat(result.size()).isEqualTo(1);
+    }
+
+    /* ========================== Projections ========================== */
+    /*  쿼리 select절에 들어갈 데이터를 Projections라고 한다. (가져올 데이터들)
+
+        DTO 데이터를 가져올때 사용
+     */
+    @Test
+    public void projections() throws Exception {
+        //given
+        Team teamA = new Team("teamA");
+        em.persist(teamA);
+
+        Member m1 = new Member("m1", 0, teamA);
+        Member m2 = new Member("m2", 0, teamA);
+        em.persist(m1);
+        em.persist(m2);
+
+        em.flush();
+        em.clear();
+
+        //when
+        /*
+            인터페이스로 만든 것
+         */
+        //List<UsernameOnly> result = memberRepository.findProjectionsByUsername("m1");
+
+        /*
+            CLASS로 만들면 프록시가 아닌 구체 클래스로 가져온다. 디버깅해보면 알수 있다.
+         */
+        List<UsernameOnlyDTO> result = memberRepository.findProjections2ByUsername("m1");
+
+
+        // List<UsernameOnlyDTO> typeGet = memberRepository.findProjections3ByUsername("m1", UsernameOnlyDTO.class);
+
+        //then
+
+        for (UsernameOnlyDTO usernameOnlyDTO : result) {
+            System.out.println("usernameOnlyDTO = " + usernameOnlyDTO);
+        }
+    }
+
+    @Test
+    public void projectionsUsingNestedClosed() throws Exception {
+        //given
+        Team teamA = new Team("teamA");
+        em.persist(teamA);
+
+        Member m1 = new Member("m1", 0, teamA);
+        Member m2 = new Member("m2", 0, teamA);
+        em.persist(m1);
+        em.persist(m2);
+
+        em.flush();
+        em.clear();
+
+        List<NestedClosedProjections> result = memberRepository.findProjections3ByUsername("m1", NestedClosedProjections.class);
+
+        /*
+            Query를 보면 member는 username만 가져오지만 Team은 전부 가져 온다.
+            즉 최적화가 불가능..
+            join은 left join으로 한다.
+
+            즉 프로젝션 대상이 root 엔티티면 query 최적화 가능
+            그러나 루트가 아니면 left outer join으로 모든 필드를 select 절에 포함시킨다.
+         */
+
+        for (NestedClosedProjections nestedClosedProjections : result) {
+            System.out.println("nestedClosedProjections = " + nestedClosedProjections);
+            String username = nestedClosedProjections.getUsername();
+            String teamName = nestedClosedProjections.getTeam().getName();
+            System.out.println("username = " + username);
+            System.out.println("teamName = " + teamName);
+        }
+
+    }
+    
 }
 
 

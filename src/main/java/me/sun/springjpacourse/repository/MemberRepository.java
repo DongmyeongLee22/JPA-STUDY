@@ -151,7 +151,31 @@ public interface MemberRepository extends JpaRepository<Member, Long>, MemberRep
 
         --> Item, ItemRepository 확인
      */
-    
+
+    /* ========================== Specifications(명세) ========================== */
+
+    /*
+        도메인 주도 설계에서 Specifications의 개념을 소개한다.
+        JPA에서는 Crieteria?를 쓴다. 매우 복잡하니깐 쓰지말고 QueryDSL 써야함
+     */
+
+
+
+    /* ========================== Projections ========================== */
+    /*  쿼리 select절에 들어갈 데이터를 Projections라고 한다. (가져올 데이터들)
+
+        DTO 데이터를 가져올때 사용
+
+        UsernameOnly Interface를만들고 그냥 쓰면 된다
+     */
+
+    // 이렇게하면 username만 select 한다!!
+    List<UsernameOnly> findProjectionsByUsername(@Param("username") String usernmae);
+
+    List<UsernameOnlyDTO> findProjections2ByUsername(@Param("username") String usernmae);
+
+    // 이렇게 Generics 형태로도 사용가능
+    <T> List<T> findProjections3ByUsername(@Param("username") String usernmae, Class<T> type);
 
     
 }
