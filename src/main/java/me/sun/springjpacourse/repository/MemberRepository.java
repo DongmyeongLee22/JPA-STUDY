@@ -177,5 +177,36 @@ public interface MemberRepository extends JpaRepository<Member, Long>, MemberRep
     // 이렇게 Generics 형태로도 사용가능
     <T> List<T> findProjections3ByUsername(@Param("username") String usernmae, Class<T> type);
 
-    
+
+    /* ========================== 네이티브 쿼리 ========================== */
+
+    /*
+        JPA를 사용할때는 네이티브 쿼리를 사용하지 않는게 좋다. 최후의 방법으로 사용하자.
+
+        한계
+        엔티티를 가져올땐 데이터를 엔티티에 맞게 select 절에 쳐줘야함.
+        네이티브 쿼리를 가져올떄는 멤버필드를 다 쳐야 한다.
+        JPQL처럼 컴파일시에 문법확인이 안된다.
+        동적쿼리가 안된다.
+        페이징 불확실
+
+
+        그나마 활용예
+        네이티브 SQL을 DTO로 조회할 때는 JdbcTemplate or myBatis를 쓴다.
+
+        Projections를 활용할때 좀 쓸만함
+        --> 정적쿼리를 네이티브 쓸때는 Projections를 이용할 수 있다. 페이징도 가능하다.
+     */
+
+    @Query(value = "select * from Member where username = ?", nativeQuery = true)
+    Member findByNativeQuery(String username);
+
+    //Projections를 활용할때 좀 쓸만함 , 페이징 가능
+    @Query(value = "select  m.member_id as id, m.username, t.name as teamName " +
+            "from member m left join team t",
+            countQuery = "select count(*) from member",
+            nativeQuery = true)
+    Page<MemberProjection> findByNativeProjection(Pageable pageable);
+
+
 }
