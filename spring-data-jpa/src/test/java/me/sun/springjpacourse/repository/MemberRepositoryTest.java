@@ -1,5 +1,6 @@
 package me.sun.springjpacourse.repository;
 
+import jdk.nashorn.internal.ir.annotations.Ignore;
 import me.sun.springjpacourse.dto.MemberDto;
 import me.sun.springjpacourse.entity.Member;
 import me.sun.springjpacourse.entity.Team;

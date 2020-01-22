@@ -1,7 +1,9 @@
 package me.sun.springjpacourse.entity;
 
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.domain.Persistable;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -12,8 +14,10 @@ import javax.persistence.Id;
 import java.time.LocalDateTime;
 
 @Entity
+@Setter
+@Getter
 @EntityListeners(AuditingEntityListener.class)
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 public class Item implements Persistable<String> {
 
     @Id

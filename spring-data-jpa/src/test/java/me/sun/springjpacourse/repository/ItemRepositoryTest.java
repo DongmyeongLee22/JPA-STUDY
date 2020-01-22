@@ -5,11 +5,25 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.time.LocalDateTime;
+
 @SpringBootTest
 class ItemRepositoryTest {
 
     @Autowired
     ItemRepository itemRepository;
+
+    @Test
+    public void asd() throws Exception{
+        //given
+        Item  item = new Item();
+        item.setCreatedDate(LocalDateTime.now());
+
+        //when
+
+        //then
+    }
+
 
     @Test
     public void save() throws Exception {
