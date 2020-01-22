@@ -14,6 +14,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.PersistenceUnit;
 
 import java.util.List;
 
@@ -277,10 +279,197 @@ public class QuerydslBasicTest {
 
         assertThat(teamB.get(team.name)).isEqualTo("teamB");
         assertThat(teamB.get(member.age.avg())).isEqualTo(35);
+    }
 
+    /**
+     * 팀 A에 소속된 모든 회원
+     */
+    @Test
+    void join1() throws Exception{
+        List<Member> teamA = queryFactory
+                .selectFrom(member)
+                .join(member.team, team)
+//                .leftJoin(member.team, team)
+//                .rightJoin(member.team, team)
+                .where(team.name.eq("teamA"))
+                .fetch();
 
+        for (Member member1 : teamA) {
+            assertThat(member1.getTeam().getName()).isEqualTo("teamA");
+        }
+
+        assertThat(teamA)
+                .extracting("username")
+                .containsExactly("member1", "member2");
     }
 
 
+    /**
+     * 세타 조인
+     * 회원의 이름이 팀 이름과 같은 회원 조회 -> 연관관계가 없는 거 조회해보기
+     */
+    @Test
+    void theta_join() throws Exception{
+        em.persist(new Member("teamA"));
+        em.persist(new Member("teamB"));
+        em.persist(new Member("teamC"));
+
+        /* 모든 회원, 팀 가져와서 비교하는 것처럼 막 조인해버리는게 세타조인
+            -> 외부조인(left, right outer join)이 불가하고 내부 조인만 가능
+            -> 최신 버전이 들어오면서 외부 조인도 가능한 방법이 있다. 아래의 조인 on을 다룬다.
+        */
+        List<Member> result = queryFactory
+                .select(member)
+                .from(member, team)
+                .where(member.username.eq(team.name))
+                .fetch();
+
+        assertThat(result)
+                .extracting("username")
+                .containsExactly("teamA", "teamB");
+    }
+
+    /** 조인 - on 절 활용
+     *  -> 조인 대상 필터링
+     *  -> 연관관계 없는 엔티티 외부 조인
+      */
+
+    /** 1. 조인대상 필터링
+     * 회원과 팀을 조인하면서, 팀 이름이 teamA인 팀만 조인, 회원은 모두 조회
+     *
+     * JPQL: select m, t from Member m left join m.team t on t.name = 'teamA';
+     */
+    @Test
+    void join_on_filterling() throws Exception{
+        List<Tuple> result = queryFactory
+                .select(member, team)
+                .from(member)
+                // 그냥 inner join이면 굳이 on절이 필요없고 where 가능해진다.
+                // on절은 외부조인이 필요한 경우에 쓰자
+                .leftJoin(member.team, team)
+                .on(team.name.eq("teamA"))
+                .fetch();
+
+        for (Tuple tuple : result) {
+
+            /* left 조인이므로 member는 다 가져오고 team은 teamA인 애들만 가져온다.
+
+                tuple = [Member(id=3, username=member1, age=10), Team(id=1, name=teamA)]
+                tuple = [Member(id=4, username=member2, age=20), Team(id=1, name=teamA)]
+                tuple = [Member(id=5, username=member3, age=30), null]
+                tuple = [Member(id=6, username=member4, age=40), null]
+
+               --- JPQL ---
+
+                select
+                    member1,
+                    team
+                from
+                    Member member1
+                left join
+                    member1.team as team with team.name = ?1
+
+               --- 실제 SQL ---
+
+                select
+                    member0_.member_id as member_i1_0_0_,
+                    team1_.team_id as team_id1_1_1_,
+                    member0_.age as age2_0_0_,
+                    member0_.team_id as team_id4_0_0_,
+                    member0_.username as username3_0_0_,
+                    team1_.name as name2_1_1_
+                from
+                    member member0_
+                left outer join
+                    team team1_
+                        on member0_.team_id=team1_.team_id
+                        and (
+                            team1_.name=?
+                        )
+             */
+
+            System.out.println("tuple = " + tuple);
+        }
+    }
+
+
+
+
+    /** 2. 연관관계가 없는 엔티티 외부 조인
+     *  회원의 이름과 팀 이름이 같은 대상 외부조인
+     */
+    @Test
+    void join_on_on_relation() throws Exception{
+        em.persist(new Member("teamA"));
+        em.persist(new Member("teamB"));
+        em.persist(new Member("teamC"));
+
+        List<Tuple> result = queryFactory
+                .select(member, team)
+                .from(member)
+                // .leftJoin(member.team, team) 이렇게 들어가는데아닌 team하나만 들어감! 주의 해야한다.
+                // 바로 team을 넣어버리면 id로 매칭하는게아닌 team자체로 조인을 한다. , on절은 필터링하는 것
+                .leftJoin(team).on(member.username.eq(team.name))
+                .fetch();
+
+        for (Tuple tuple : result) {
+            /* 멤버들이 다 나오는데 멤버 이름과 팀이름이 같은 경우에만 팀을 가져온다.
+
+                tuple = [Member(id=5, username=member3, age=30), null]
+                tuple = [Member(id=6, username=member4, age=40), null]
+                tuple = [Member(id=7, username=teamA, age=0), Team(id=1, name=teamA)]
+                tuple = [Member(id=8, username=teamB, age=0), Team(id=2, name=teamB)]
+
+
+                SQL을 보면 on안에 id로 매칭하는게 아닌 name 자체로 매칭하는것을 알 수 있다.
+
+                left outer join
+                   team team1_
+                   on (
+                       member0_.username=team1_.name
+                   )
+             */
+            System.out.println("tuple = " + tuple);
+        }
+    }
+
+    /** 페치조인
+     *  - sql을 활용해서 연관된 엔티티를 한번에 가져오는것
+     *  - 성능최적화에서 주로 사용한다.
+     */
+
+    @PersistenceUnit
+    EntityManagerFactory emf;
+
+    @Test
+    void fetchJoinNo() throws Exception{
+        em.flush();
+        em.clear();
+
+        Member findMember = queryFactory
+                .selectFrom(member)
+                .where(member.username.eq("member1"))
+                .fetchOne();
+
+        // 이미 로딩된 엔티티인지 확인할 수 있다.
+        boolean isLoaded = emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam());
+        assertThat(isLoaded).as("페치 조인 미 적용").isFalse();
+    }
+
+    @Test
+    void fetchJoinYes() throws Exception{
+        em.flush();
+        em.clear();
+
+        Member findMember = queryFactory
+                .selectFrom(member)
+                .join(member.team, team).fetchJoin()
+                .where(member.username.eq("member1"))
+                .fetchOne();
+
+        // 이미 로딩된 엔티티인지 확인할 수 있다.
+        boolean isLoaded = emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam());
+        assertThat(isLoaded).as("페치 조인 적용").isTrue();
+    }
 
 }
