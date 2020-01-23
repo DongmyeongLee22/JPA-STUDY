@@ -2,6 +2,9 @@ package me.sun.springquerydsl;
 
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import me.sun.springquerydsl.entity.Member;
 import me.sun.springquerydsl.entity.QMember;
@@ -19,6 +22,7 @@ import javax.persistence.PersistenceUnit;
 
 import java.util.List;
 
+import static com.querydsl.jpa.JPAExpressions.*;
 import static me.sun.springquerydsl.entity.QMember.*;
 import static me.sun.springquerydsl.entity.QTeam.team;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -263,7 +267,7 @@ public class QuerydslBasicTest {
      * 팀의 이름과 각 팀의 평균을 구해라
      */
     @Test
-    void groupBy() throws Exception{
+    void groupBy() throws Exception {
         List<Tuple> result = queryFactory
                 .select(team.name, member.age.avg())
                 .from(member)
@@ -285,7 +289,7 @@ public class QuerydslBasicTest {
      * 팀 A에 소속된 모든 회원
      */
     @Test
-    void join1() throws Exception{
+    void join1() throws Exception {
         List<Member> teamA = queryFactory
                 .selectFrom(member)
                 .join(member.team, team)
@@ -309,7 +313,7 @@ public class QuerydslBasicTest {
      * 회원의 이름이 팀 이름과 같은 회원 조회 -> 연관관계가 없는 거 조회해보기
      */
     @Test
-    void theta_join() throws Exception{
+    void theta_join() throws Exception {
         em.persist(new Member("teamA"));
         em.persist(new Member("teamB"));
         em.persist(new Member("teamC"));
@@ -332,15 +336,16 @@ public class QuerydslBasicTest {
     /** 조인 - on 절 활용
      *  -> 조인 대상 필터링
      *  -> 연관관계 없는 엔티티 외부 조인
-      */
+     */
 
-    /** 1. 조인대상 필터링
+    /**
+     * 1. 조인대상 필터링
      * 회원과 팀을 조인하면서, 팀 이름이 teamA인 팀만 조인, 회원은 모두 조회
-     *
+     * <p>
      * JPQL: select m, t from Member m left join m.team t on t.name = 'teamA';
      */
     @Test
-    void join_on_filterling() throws Exception{
+    void join_on_filterling() throws Exception {
         List<Tuple> result = queryFactory
                 .select(member, team)
                 .from(member)
@@ -393,13 +398,12 @@ public class QuerydslBasicTest {
     }
 
 
-
-
-    /** 2. 연관관계가 없는 엔티티 외부 조인
-     *  회원의 이름과 팀 이름이 같은 대상 외부조인
+    /**
+     * 2. 연관관계가 없는 엔티티 외부 조인
+     * 회원의 이름과 팀 이름이 같은 대상 외부조인
      */
     @Test
-    void join_on_on_relation() throws Exception{
+    void join_on_on_relation() throws Exception {
         em.persist(new Member("teamA"));
         em.persist(new Member("teamB"));
         em.persist(new Member("teamC"));
@@ -433,16 +437,17 @@ public class QuerydslBasicTest {
         }
     }
 
-    /** 페치조인
-     *  - sql을 활용해서 연관된 엔티티를 한번에 가져오는것
-     *  - 성능최적화에서 주로 사용한다.
+    /**
+     * 페치조인
+     * - sql을 활용해서 연관된 엔티티를 한번에 가져오는것
+     * - 성능최적화에서 주로 사용한다.
      */
 
     @PersistenceUnit
     EntityManagerFactory emf;
 
     @Test
-    void fetchJoinNo() throws Exception{
+    void fetchJoinNo() throws Exception {
         em.flush();
         em.clear();
 
@@ -457,7 +462,7 @@ public class QuerydslBasicTest {
     }
 
     @Test
-    void fetchJoinYes() throws Exception{
+    void fetchJoinYes() throws Exception {
         em.flush();
         em.clear();
 
@@ -471,5 +476,196 @@ public class QuerydslBasicTest {
         boolean isLoaded = emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam());
         assertThat(isLoaded).as("페치 조인 적용").isTrue();
     }
+
+    /* ================================ JPA Expressions 서브 쿼리를 사용할 수 있다. ================================ */
+
+    /**
+     * - 나이가 가장 많은 회원 조회
+     */
+    @Test
+    void subQuery() throws Exception {
+
+        QMember subMember = new QMember("subMember");
+
+        //given
+        List<Member> fetch = queryFactory.selectFrom(member)
+                .where(member.age.eq(
+                        select(subMember.age.max())  // static import 사용했다
+                                .from(subMember)
+                ))
+                .fetch();
+        //then
+
+        assertThat(fetch.size()).isEqualTo(1);
+
+        assertThat(fetch).extracting("age").containsExactly(40);
+    }
+
+
+    /**
+     * - 나이가 평균 이상 인 회원 조회
+     */
+    @Test
+    void subQueryGoe() throws Exception {
+
+        QMember subMember = new QMember("subMember");
+
+        //given
+        List<Member> fetch = queryFactory.selectFrom(member)
+                .where(member.age.goe(
+                        select(subMember.age.avg())
+                                .from(subMember)
+                ))
+                .fetch();
+        //then
+
+        assertThat(fetch.size()).isEqualTo(2);
+
+        assertThat(fetch).extracting("age").containsExactly(30, 40);
+    }
+
+    /**
+     * - 나이가 10 살보다 큰 사람들 조회
+     */
+    @Test
+    void subQueryIn() throws Exception {
+
+        QMember subMember = new QMember("subMember");
+
+        //given
+        List<Member> fetch = queryFactory.selectFrom(member)
+                .where(member.age.in(
+                        select(subMember.age)
+                                .from(subMember)
+                                .where(subMember.age.gt(10))
+                ))
+                .fetch();
+        //then
+
+        assertThat(fetch.size()).isEqualTo(3);
+
+        assertThat(fetch).extracting("age").containsExactly(20, 30, 40);
+    }
+
+    /**
+     * - select도 subquery 가능하다
+     */
+    @Test
+    void selectSubQuery() throws Exception {
+        QMember subMember = new QMember("subMember");
+
+        List<Tuple> fetch = queryFactory
+                .select(member.username,
+                        select(subMember.age.avg())
+                                .from(subMember))
+                .from(member)
+                .fetch();
+        /*
+            tuple = [member1, 25.0]
+            tuple = [member2, 25.0]
+            tuple = [member3, 25.0]
+            tuple = [member4, 25.0]
+         */
+
+        for (Tuple tuple : fetch) {
+            System.out.println("tuple = " + tuple);
+        }
+    }
+
+    /** JPQL의 한계점으로 from 절의 서브쿼리(인라인 뷰)는 지원하지 않는다.
+     *  - 원래 select도 안되지만 하이버네이트가 되게 해준 것..
+     *
+     *** 해결 방안
+     *   - 1. 대부분 from절 서브쿼리는 join으로 바꾸어 진다.
+     *   - 2. 그게 안된다면 애플리케이션에서 쿼리를 2번 분리해서 실행한다.
+     *   - 3. nativeSQL을 사용한다.
+     *   - // from 절에 많은 서브쿼리를 사용하려한다면 쿼리 작성에 대해 한번 생각해보자/
+     */
+
+
+
+
+    /**
+     * CASE 문
+     * - 왠만하면 디비는 실제 데이터를 조회하는 위주로 사용하는게 좋다.
+     * - 아래와 같은것은 그냥 예제용이지 실제는 일단 값을 받아와서 앱에서 처리하자
+     */
+    @Test
+    void basicCase() throws Exception {
+        //given
+        List<String> result = queryFactory
+                .select(member.age
+                        .when(10).then("열살")
+                        .when(20).then("스무살")
+                        .otherwise("기타")
+                )
+                .from(member)
+                .fetch();
+        //then
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+
+    @Test
+    void complexCase() throws Exception {
+        List<String> result = queryFactory
+                .select(new CaseBuilder()
+                        .when(member.age.between(0, 20)).then("0 ~ 20 살")
+                        .when(member.age.between(21, 30)).then("21 ~ 30 살")
+                        .otherwise("기타")
+                )
+                .from(member)
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+
+    /** 상수, 문자 더하기
+     *
+     */
+    @Test
+    void constant() throws Exception{
+        //given
+
+        // JPQL에서는 상수가 안나간다
+        List<Tuple> result = queryFactory
+                .select(member.username, Expressions.constant("A"))
+                .from(member)
+                .fetch();
+
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+        }
+    }
+
+    @Test
+    void concat() throws Exception{
+
+        //{username}_{age}
+        List<String> result = queryFactory
+
+//                .select(member.username.concat("_").concat(member.age)) age는 숫자이므로 concat안된다.
+                // enum, 숫자 등은 stringValue로 문자로 변환해주는게 좋다.
+                // 특히 enum 처리할 때 많이 사용하게 된다.
+                .select(member.username.concat("_").concat(member.age.stringValue()))
+                .from(member)
+                .fetch();
+        /*
+        select
+            ((member0_.username||?)||cast(member0_.age as char)) as col_0_0_  SQL을 보면 age를 char로 캐스팅 한것을 알 수 있다.
+        from
+            member member0_
+         */
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+
+
+
 
 }
