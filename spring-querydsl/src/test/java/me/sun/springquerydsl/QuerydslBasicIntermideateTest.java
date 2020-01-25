@@ -6,6 +6,7 @@ import com.querydsl.core.types.ExpressionUtils;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import me.sun.springquerydsl.entity.Member;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.EntityManager;
@@ -395,6 +397,129 @@ public class QuerydslBasicIntermideateTest {
     }
 
     /* ======================================== 동적 쿼리 끝! ======================================== */
+
+
+    /* ======================================== 수정 삭제 벌크 연산 ======================================== */
+
+    /**
+     * 데이터를 업데이트 할 때 변경 감지를 사용하면 비효율적
+     * - 벌크 연산을 통해 효율적인 구현 가능
+     */
+    @Test
+    // @Commit // 테스트에서 Transantional이 있으면 트랜잭션이 돌아가나 롤백을 한다. commit을 붙여주면 롤백 안함
+    void bulkUpdate() throws Exception {
+
+        // member1 = 10 -> 비회원
+        // member2 = 20 -> 비회원
+        long count = queryFactory
+                .update(member)
+                .set(member.username, "비회원")
+                .where(member.age.lt(28))
+                .execute();
+
+        em.flush();
+        em.clear();
+        /* 이 쿼리는(모든 벌크 연산은) 바로 db에 날리므로 영속성 컨텍스트에는 반영이 안된다.
+            - 영속성 컨텍스트와 db의 데이터와 일치하지 않다.
+            - 이런걸 repeactable read(?) 이라고 한다.
+            - 벌크 연산을 실행하면 항상 em.flush, em.clear하자.
+         */
+
+        /* 그래서 이렇게 조회를 하면 우선 db에서 데이터들을 가져온다.
+           - 근데 영속성 컨텍스트에 이미 데이터가 있다면 그 데이터를 사용하고 db 데이터를 버리게 된다.
+           - 즉 영속성 컨텍스트가 가장 최우선이다.
+
+         */
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .fetch();
+
+        for (Member m : result) {
+            System.out.println("m = " + m);
+        }
+
+    }
+
+    @Test
+    void bulkAdd() throws Exception {
+        long execute = queryFactory
+                .update(member)
+                .set(member.age, member.age.add(1))
+//                .set(member.age, member.age.multiply(2)) 곱하기는 이렇게
+                // .set(member.age, member.age.add(-1)) 마이너스는 이렇게
+                .execute();
+        em.flush();
+        em.clear();
+
+        queryFactory
+                .selectFrom(member)
+                .fetch().forEach(System.out::println);
+    }
+
+    @Test
+    void bulkdelete() throws Exception {
+        long execute = queryFactory
+                .delete(member)
+                .where(member.age.gt(18))
+                .execute();
+
+        em.flush();
+        em.clear();
+
+        assertThat(
+                queryFactory
+                        .selectFrom(member)
+                        .fetch().size()
+        ).isEqualTo(1);
+    }
+
+    /* ======================================== 수정 삭제 벌크 연산 끝 !======================================== */
+
+
+    /* ======================================== SQL function ======================================== */
+
+    /**
+     * JPA와 같이 dialet에 등록된 내용만 호출 가능
+     */
+    @Test
+    void sqlfunction() throws Exception {
+        List<String> result = queryFactory
+                .select(
+                        // member 단어를 M으로 바꿔서 조회
+                        Expressions.stringTemplate(
+                                // package org.hibernate.dialect; H2Dialect에 함수가 등록되어 있어야한다.
+                                // 직접 등록하려면 상속받아서 만들어야 한다.
+                                "function('replace', {0}, {1}, {2})",
+                                member.username, "member", "M"))
+                .from(member)
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+
+    @Test
+    void sqlfunction2() throws Exception {
+        List<String> fetch = queryFactory
+                .select(member.username)
+                .from(member)
+//                .where(member.username.eq(
+//                        Expressions.stringTemplate("function('lower', {0})", member.username
+//                        ))
+                .where(member.username.eq(member.username.lower()))
+                // 일반적인 db에서 제공하는 것들은 querydsl에서 제공됨
+                .fetch();
+
+        assertThat(fetch.size()).isEqualTo(4);
+
+        List<String> fetch2 = queryFactory
+                .select(member.username)
+                .from(member)
+                .where(member.username.eq(member.username.upper()))
+                .fetch();
+        assertThat(fetch2.size()).isEqualTo(0);
+    }
 
 
 }
