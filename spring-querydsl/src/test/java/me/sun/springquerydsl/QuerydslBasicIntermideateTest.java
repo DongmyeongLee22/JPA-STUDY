@@ -295,5 +295,106 @@ public class QuerydslBasicIntermideateTest {
 
     /* ======================================== 프로젝션과 결과 반환 끝 ======================================== */
 
+    /* ======================================== 동적 쿼리 ======================================== */
+
+    /**
+     * BooleanBuilder 사용
+     */
+    @Test
+    void dynamicQuery_BooleanBuilder() throws Exception {
+
+        String username = "member1";
+        Integer age = 10;
+
+        // sql 보면 username, age가 where에 들어간다.
+        List<Member> result = serachMember1(username, age);
+
+        assertThat(result.size()).isEqualTo(1);
+
+        age = null;
+        // sql 보면 age는 null이라서 booleanbuilder가 안태운다.
+        List<Member> resultWithAgeNull = serachMember1(username, age);
+
+    }
+
+    // age 가 null이면 username의 조건으로만 검색
+    // 둘다 null이면 전체 검색
+    private List<Member> serachMember1(String username, Integer age) {
+
+        BooleanBuilder builder = new BooleanBuilder();
+
+        // null값이 절대 아니라는 보장이 된다면 생성자에 초기값을 넣을 수 있다.
+        // BooleanBuilder builder = new BooleanBuilder(member.username.eq(username));
+
+        if (username != null) {
+            builder.and(member.username.eq(username));
+        }
+
+        if (age != null) {
+            builder.and(member.age.eq(age));
+        }
+        return queryFactory
+                .selectFrom(member)
+                .where(builder)
+                .fetch();
+    }
+
+    /**
+     * where 다중 파라미터 동적쿼리
+     * - 코드가 깔끔해서 실무에서 좋음
+     * - 이 방법은 usernameEq같이 메서드가 명확하다
+     * - booleanBuilder보다 깔끔하다
+     * - 재사용이 가능하다.
+     * - 광고 상태가 isValid, 광고 날짜가 In이라면 -> isServiceable 메서드로 합쳐서 만들 수 있다.
+     */
+    @Test
+    void dynamicQueryByWhereParam() throws Exception {
+
+        String usernameParam = "member1";
+        Integer ageParam = 10;
+
+        // sql 보면 username, age가 where에 들어간다.
+        List<Member> result = serachMember2(usernameParam, ageParam);
+
+        assertThat(result.size()).isEqualTo(1);
+
+        ageParam = null;
+        List<Member> resultWithAgeNull = serachMember2(usernameParam, ageParam);
+    }
+
+    private List<Member> serachMember2(String username, Integer age) {
+
+        return queryFactory
+                .selectFrom(member)
+                .where(usernameEq(username), ageEq(age))
+                .fetch();
+    }
+
+    private List<Member> serachMember3(String username, Integer age) {
+        return queryFactory
+                .selectFrom(member)
+                .where(allEq(username, age))
+                .fetch();
+    }
+
+    // where에 null이 있으면 무시가 된다.
+    // Predicate말고 BooleanExpression으로 해주자
+    private BooleanExpression usernameEq(String username) {
+        if (username == null) {
+            return null;
+        }
+        return member.username.eq(username);
+    }
+
+    private BooleanExpression ageEq(Integer age) {
+        return age == null ? null : member.age.eq(age);
+    }
+
+    private BooleanExpression allEq(String username, Integer age) {
+        return usernameEq(username).and(ageEq(age));
+    }
+
+    /* ======================================== 동적 쿼리 끝! ======================================== */
+
 
 }
