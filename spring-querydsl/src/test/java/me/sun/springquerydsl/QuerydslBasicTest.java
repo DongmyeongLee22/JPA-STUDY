@@ -3,13 +3,12 @@ package me.sun.springquerydsl;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.DateExpression;
 import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import me.sun.springquerydsl.entity.Member;
-import me.sun.springquerydsl.entity.QMember;
-import me.sun.springquerydsl.entity.QTeam;
-import me.sun.springquerydsl.entity.Team;
+import me.sun.springquerydsl.entity.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,9 +19,13 @@ import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceUnit;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 import static com.querydsl.jpa.JPAExpressions.*;
+import static java.time.LocalDate.*;
+import static me.sun.springquerydsl.entity.QDateTest.*;
 import static me.sun.springquerydsl.entity.QMember.*;
 import static me.sun.springquerydsl.entity.QTeam.team;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -583,8 +586,6 @@ public class QuerydslBasicTest {
      */
 
 
-
-
     /**
      * CASE 문
      * - 왠만하면 디비는 실제 데이터를 조회하는 위주로 사용하는게 좋다.
@@ -623,11 +624,11 @@ public class QuerydslBasicTest {
         }
     }
 
-    /** 상수, 문자 더하기
-     *
+    /**
+     * 상수, 문자 더하기
      */
     @Test
-    void constant() throws Exception{
+    void constant() throws Exception {
         //given
 
         // JPQL에서는 상수가 안나간다
@@ -642,7 +643,7 @@ public class QuerydslBasicTest {
     }
 
     @Test
-    void concat() throws Exception{
+    void concat() throws Exception {
 
         //{username}_{age}
         List<String> result = queryFactory
@@ -665,7 +666,72 @@ public class QuerydslBasicTest {
         }
     }
 
+    @Test
+    void monthTest() throws Exception {
+        //given
 
+        DateTest dateTest1 = new DateTest("name1", of(2014, 11, 11), of(2014, 11, 20));
+
+        DateTest dateTest3 = new DateTest("name2", of(2014, 10, 11), of(2014, 10, 20));
+        DateTest dateTest4 = new DateTest("name2", of(2014, 10, 11), of(2014, 11, 20));
+        DateTest dateTest5 = new DateTest("name2", of(2014, 12, 11), of(2014, 12, 20));
+        DateTest dateTest6 = new DateTest("name2", of(2014, 11, 11), of(2014, 12, 20));
+
+        DateTest dateTest2 = new DateTest("name3", of(2014, 11, 11), of(2014, 12, 20));
+        em.persist(dateTest1);
+        em.persist(dateTest2);
+        em.persist(dateTest3);
+        em.persist(dateTest4);
+        em.persist(dateTest5);
+        em.persist(dateTest6);
+        em.flush();
+        em.clear();
+
+//        List<DateTest> twoGet = queryFactory
+//                .selectFrom(dateTest)
+//                .where(dateTest.start.month().eq(11))
+//                .fetch();
+//
+//        List<DateTest> threeGet = queryFactory
+//                .selectFrom(dateTest)
+//                .where(dateTest.start.month().eq(11).or(dateTest.end.month().eq(11)))
+//                .fetch();
+
+        List<DateTest> findDate = queryFactory
+                .selectFrom(dateTest)
+                .where(dateTest.name.eq("name2").and(
+                        dateTest.start.month().eq(11).
+                                or(dateTest.end.month().eq(11))
+                ))
+                .fetch();
+
+//        for (DateTest dateTest : twoGet) {
+//            System.out.println("dateTest.getName() = " + dateTest.getName());
+//        }
+//
+//        System.out.println(
+//
+//        );
+//
+//        for (DateTest dateTest : threeGet) {
+//            System.out.println("dateTest.getName() = " + dateTest.getName());
+//        }
+//
+//        System.out.println();
+
+        for (DateTest dateTest : findDate) {
+            System.out.println("dateTest = " + dateTest.getName());
+            System.out.println("dateTest.getStart() = " + dateTest.getStart());
+            System.out.println("dateTest.getEnd() = " + dateTest.getEnd());
+        }
+
+        List<DateTest> resultList = em.createQuery("select d from DateTest d where month(d.name) = 11", DateTest.class)
+                .getResultList();
+
+        for (DateTest dateTest : resultList) {
+            System.out.println("dateTest.getName() = " + dateTest.getName());
+        }
+    }
 
 
 }
