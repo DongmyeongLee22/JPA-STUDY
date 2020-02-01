@@ -3,6 +3,7 @@ package me.sun.springquerydsl.entity;
 import lombok.*;
 
 import javax.persistence.*;
+import java.time.LocalDate;
 
 @Entity
 @Getter
@@ -39,6 +40,7 @@ public class Member {
             changeTeam(team);
         }
     }
+
 
     public void changeTeam(Team team) {
         this.team = team;
