@@ -8,6 +8,6 @@ import java.util.List;
 /**
  * Created by Stranger on 2020/02/22
  */
-public interface MemberRepository extends JpaRepository<Member, Long> {
+public interface MemberRepository extends JpaRepository<Member, Long>, MemberRepositoryCustom {
     List<Member> findByUsername(String username);
 }

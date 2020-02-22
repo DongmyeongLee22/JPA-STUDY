@@ -116,6 +116,7 @@ class MemberJPARepositoryTest {
         assertThat(memberTeamDtos).extracting("username").containsExactly("member4");
     }
 
+
     @Test
     void searchTest2Where() throws Exception {
         Team teamA = new Team("teamA");
@@ -143,5 +144,4 @@ class MemberJPARepositoryTest {
 
         assertThat(memberTeamDtos).extracting("username").containsExactly("member4");
     }
-
 }
