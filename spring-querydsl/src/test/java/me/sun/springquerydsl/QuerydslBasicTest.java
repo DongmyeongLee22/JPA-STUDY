@@ -39,6 +39,7 @@ public class QuerydslBasicTest {
 
 
     // 시작은 이렇게 한다.
+    @Autowired
     JPAQueryFactory queryFactory;
 
 
@@ -47,8 +48,6 @@ public class QuerydslBasicTest {
 
         // 이렇게해도 동시성 문제가 없다.
         // em 자체가 멀티 스레드에 문제 없게 만들어져있다.
-        queryFactory = new JPAQueryFactory(em);
-
         Team teamA = new Team("teamA");
         Team teamB = new Team("teamB");
         em.persist(teamA);
@@ -602,6 +601,10 @@ public class QuerydslBasicTest {
                 )
                 .from(member)
                 .fetch();
+        queryFactory
+                .selectFrom(member)
+                .from(member)
+                .fetch().forEach(System.out::println);
         //then
         for (String s : result) {
             System.out.println("s = " + s);
@@ -725,12 +728,6 @@ public class QuerydslBasicTest {
             System.out.println("dateTest.getEnd() = " + dateTest.getEnd());
         }
 
-        List<DateTest> resultList = em.createQuery("select d from DateTest d where month(d.name) = 11", DateTest.class)
-                .getResultList();
-
-        for (DateTest dateTest : resultList) {
-            System.out.println("dateTest.getName() = " + dateTest.getName());
-        }
     }
 
 
